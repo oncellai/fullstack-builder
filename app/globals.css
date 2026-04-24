@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0a0a0a;
+  --surface: #111;
+  --surface-2: #181818;
+  --border: rgba(255, 255, 255, 0.06);
+  --border-gold: rgba(212, 165, 74, 0.2);
+  --text: #e8e4de;
+  --text-dim: rgba(232, 228, 222, 0.5);
+  --text-muted: rgba(232, 228, 222, 0.2);
+  --accent: #d4a54a;
+  --accent-dim: rgba(212, 165, 74, 0.08);
+  --green: #5cdb7f;
+  --mono: "SF Mono", "Fira Code", "Consolas", monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  height: 100vh;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.fade-up { animation: fadeUp 0.3s ease forwards; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
