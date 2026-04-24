@@ -271,25 +271,31 @@ export default function Builder() {
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!build || !selectedFile || !updateInstruction.trim() || updating) return;
+    if (!build || !updateInstruction.trim() || updating) return;
 
     setUpdating(true);
     try {
-      const res = await fetch("/api/file", {
-        method: "PATCH",
+      const res = await fetch("/api/edit", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           session_id: build.session_id,
-          path: selectedFile,
           instruction: updateInstruction.trim(),
         }),
       });
       const data = await res.json();
-      if (!data.error) {
+      if (!data.error && data.updated_files) {
         setUpdateInstruction("");
-        // Clear cache for this file so it re-fetches with new content
-        setFileCache((prev) => { const n = { ...prev }; delete n[selectedFile]; return n; });
-        loadFile(build.session_id, selectedFile);
+        // Update cache for all changed files
+        const newCache: Record<string, string> = {};
+        for (const f of data.updated_files) {
+          if (f.content) newCache[f.path] = f.content;
+        }
+        setFileCache((prev) => ({ ...prev, ...newCache }));
+        // Reload current file if it was updated
+        if (selectedFile && newCache[selectedFile]) {
+          setFileContent(newCache[selectedFile]);
+        }
       }
     } finally {
       setUpdating(false);
@@ -687,8 +693,8 @@ export default function Builder() {
             )}
           </div>
 
-          {/* Update bar */}
-          {selectedFile && build && rightTab === "code" && (
+          {/* Edit bar — whole-app edit via natural language */}
+          {build && status === "done" && (
             <form
               onSubmit={handleUpdate}
               style={{
@@ -697,12 +703,12 @@ export default function Builder() {
               }}
             >
               <span style={{ fontFamily: "var(--mono)", fontSize: "11px", color: "rgba(92,219,127,0.5)", flexShrink: 0 }}>
-                $
+                ✦
               </span>
               <input
                 value={updateInstruction}
                 onChange={(e) => setUpdateInstruction(e.target.value)}
-                placeholder={`Update ${selectedFile.split("/").pop()}...`}
+                placeholder="Edit the app… e.g. add dark mode, improve the UI, add a search bar"
                 disabled={updating}
                 style={{
                   flex: 1, background: "transparent", border: "none", outline: "none",
@@ -721,7 +727,7 @@ export default function Builder() {
                   display: "flex", alignItems: "center", gap: "6px", flexShrink: 0,
                 }}
               >
-                {updating ? <><Spinner /> UPDATING</> : "UPDATE →"}
+                {updating ? <><Spinner /> EDITING</> : "EDIT →"}
               </button>
             </form>
           )}
