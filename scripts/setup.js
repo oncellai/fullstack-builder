@@ -28,30 +28,43 @@ async function main() {
   const oncell = new OnCell({ apiKey: process.env.ONCELL_API_KEY });
   const agentCode = readFileSync(new URL("../lib/agent-raw.js", import.meta.url), "utf-8");
 
-  console.log("Creating OnCell cell...");
-  const cell = await oncell.cells.create({
-    customerId: `fullstack-builder-${Date.now()}`,
-    tier: "starter",
-    permanent: true,
-    secrets: {
-      OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
-      LLM_MODEL: process.env.LLM_MODEL || "google/gemini-2.5-flash",
-    },
-    agent: agentCode,
-  });
+  const existingCellId = process.env.ONCELL_CELL_ID;
 
-  console.log(`Cell created: ${cell.id}`);
-  console.log(`Preview URL:  https://${cell.id}.cells.oncell.run`);
-
-  // Write cell ID to .env.local
-  let env = existsSync(envPath) ? readFileSync(envPath, "utf-8") : "";
-  if (env.includes("ONCELL_CELL_ID=")) {
-    env = env.replace(/ONCELL_CELL_ID=.*/, `ONCELL_CELL_ID=${cell.id}`);
+  let cellId;
+  if (existingCellId) {
+    // Update agent code on existing cell (preserves all session data)
+    console.log(`Updating agent on existing cell: ${existingCellId}`);
+    await oncell.cells.request(existingCellId, "write_agent", { content: agentCode });
+    cellId = existingCellId;
+    console.log("Agent updated.");
   } else {
-    env = env.trimEnd() + `\nONCELL_CELL_ID=${cell.id}\n`;
+    // First-time setup: create a new cell
+    console.log("Creating OnCell cell...");
+    const cell = await oncell.cells.create({
+      customerId: `fullstack-builder-${Date.now()}`,
+      tier: "starter",
+      permanent: true,
+      secrets: {
+        OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+        LLM_MODEL: process.env.LLM_MODEL || "google/gemini-2.5-flash",
+      },
+      agent: agentCode,
+    });
+    cellId = cell.id;
+    console.log(`Cell created: ${cellId}`);
+
+    // Write cell ID to .env.local
+    let env = existsSync(envPath) ? readFileSync(envPath, "utf-8") : "";
+    if (env.includes("ONCELL_CELL_ID=")) {
+      env = env.replace(/ONCELL_CELL_ID=.*/, `ONCELL_CELL_ID=${cellId}`);
+    } else {
+      env = env.trimEnd() + `\nONCELL_CELL_ID=${cellId}\n`;
+    }
+    writeFileSync(envPath, env);
+    console.log(`Wrote ONCELL_CELL_ID to .env.local`);
   }
-  writeFileSync(envPath, env);
-  console.log(`Wrote ONCELL_CELL_ID to .env.local`);
+
+  console.log(`Preview URL:  https://${cellId}.cells.oncell.ai`);
   console.log("\nSetup complete. Run: npm run dev");
 }
 
