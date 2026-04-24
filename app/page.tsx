@@ -85,6 +85,7 @@ export default function Builder() {
   // Run state
   const [runStatus, setRunStatus] = useState<RunStatus>("idle");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [projectCellId, setProjectCellId] = useState<string | null>(null);
   const runPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Streaming state
@@ -103,6 +104,7 @@ export default function Builder() {
     if (runPollRef.current) clearInterval(runPollRef.current);
     setRunStatus("idle");
     setPreviewUrl(null);
+    setProjectCellId(null);
   };
 
   const handleRun = async (sessionId: string) => {
@@ -118,16 +120,22 @@ export default function Builder() {
       });
       const data = await res.json();
       if (data.error) { setRunStatus("error"); return; }
+      if (data.cell_id) setProjectCellId(data.cell_id);
       if (data.already_running) {
         setPreviewUrl(data.preview_url);
         setRunStatus("running");
         return;
       }
 
+      const cellId = data.cell_id;
+
       // Poll until running or error
       runPollRef.current = setInterval(async () => {
         try {
-          const sr = await fetch(`/api/run-status?session_id=${sessionId}`);
+          const statusUrl = cellId
+            ? `/api/run-status?session_id=${sessionId}&cell_id=${cellId}`
+            : `/api/run-status?session_id=${sessionId}`;
+          const sr = await fetch(statusUrl);
           const s = await sr.json();
           if (s.status === "running") {
             setPreviewUrl(s.preview_url);
@@ -244,7 +252,7 @@ export default function Builder() {
     }
   };
 
-  const loadFile = async (sessionId: string, path: string) => {
+  const loadFile = async (sessionId: string, path: string, cellId?: string | null) => {
     setSelectedFile(path);
     setRightTab("code");
 
@@ -257,7 +265,8 @@ export default function Builder() {
     setFileContent(null);
     setFileLoading(true);
     try {
-      const res = await fetch(`/api/file?session_id=${sessionId}&path=${encodeURIComponent(path)}`);
+      const cellParam = cellId ? `&cell_id=${cellId}` : "";
+      const res = await fetch(`/api/file?session_id=${sessionId}&path=${encodeURIComponent(path)}${cellParam}`);
       const data = await res.json();
       const content = data.error ? `// Error: ${data.error}` : data.content;
       setFileContent(content);
@@ -281,6 +290,7 @@ export default function Builder() {
         body: JSON.stringify({
           session_id: build.session_id,
           instruction: updateInstruction.trim(),
+          cell_id: projectCellId,
         }),
       });
       const data = await res.json();
@@ -421,7 +431,7 @@ export default function Builder() {
                     {files.map((f) => (
                       <button
                         key={f.path}
-                        onClick={() => sessionId ? loadFile(sessionId, f.path) : undefined}
+                        onClick={() => sessionId ? loadFile(sessionId, f.path, projectCellId) : undefined}
                         style={{
                           display: "flex", alignItems: "center", justifyContent: "space-between",
                           width: "100%", padding: "5px 16px 5px " + (dir ? "28px" : "16px"),

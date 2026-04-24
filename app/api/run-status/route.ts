@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const oncell = getOnCell();
-    const cellId = getCellId();
+    const cellId = req.nextUrl.searchParams.get("cell_id") || getCellId();
     const result = await oncell.cells.request(cellId, "run_status", { session_id });
     return Response.json(result);
   } catch (err: any) {

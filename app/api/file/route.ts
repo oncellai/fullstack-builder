@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const oncell = getOnCell();
-    const cellId = getCellId();
+    const cellId = req.nextUrl.searchParams.get("cell_id") || getCellId();
 
     const result = await oncell.cells.request<{
       path: string;
@@ -32,13 +32,13 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { session_id, path, instruction } = await req.json();
+    const { session_id, path, instruction, cell_id } = await req.json();
     if (!session_id || !path || !instruction) {
       return NextResponse.json({ error: "session_id, path, and instruction required" }, { status: 400 });
     }
 
     const oncell = getOnCell();
-    const cellId = getCellId();
+    const cellId = cell_id || getCellId();
 
     const result = await oncell.cells.request<{
       path: string;
